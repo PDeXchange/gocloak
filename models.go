@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // GetQueryParams converts the struct to map[string]string
@@ -193,6 +193,7 @@ type IntroSpectTokenResult struct {
 	AuthTime    *int                  `json:"auth_time,omitempty"`
 	Jti         *string               `json:"jti,omitempty"`
 	Type        *string               `json:"typ,omitempty"`
+	Azp         *string               `json:"azp,omitempty"`
 }
 
 // User represents the Keycloak User Structure
@@ -351,6 +352,15 @@ type GetGroupsParams struct {
 	Search              *string `json:"search,omitempty"`
 }
 
+// GetChildGroupsParams represents the optional parameters for getting child groups
+type GetChildGroupsParams struct {
+	BriefRepresentation *bool   `json:"briefRepresentation,string,omitempty"`
+	Exact               *bool   `json:"exact,string,omitempty"`
+	First               *int    `json:"first,string,omitempty"`
+	Max                 *int    `json:"max,string,omitempty"`
+	Search              *string `json:"search,omitempty"`
+}
+
 // MarshalJSON is a custom json marshaling function to automatically set the Full and BriefRepresentation properties
 // for backward compatibility
 func (obj GetGroupsParams) MarshalJSON() ([]byte, error) {
@@ -408,6 +418,7 @@ type MappingsRepresentation struct {
 type ClientScope struct {
 	ID                    *string                `json:"id,omitempty"`
 	Name                  *string                `json:"name,omitempty"`
+	Type                  *string                `json:"type,omitempty"`
 	Description           *string                `json:"description,omitempty"`
 	Protocol              *string                `json:"protocol,omitempty"`
 	ClientScopeAttributes *ClientScopeAttributes `json:"attributes,omitempty"`
@@ -441,6 +452,7 @@ type ProtocolMappersConfig struct {
 	ClaimValue                         *string `json:"claim.value,omitempty"`
 	JSONTypeLabel                      *string `json:"jsonType.label,omitempty"`
 	Multivalued                        *string `json:"multivalued,omitempty"`
+	AggregateAttrs                     *string `json:"aggregate.attrs,omitempty"`
 	UsermodelClientRoleMappingClientID *string `json:"usermodel.clientRoleMapping.clientId,omitempty"`
 	IncludedClientAudience             *string `json:"included.client.audience,omitempty"`
 	FullPath                           *string `json:"full.path,omitempty"`
@@ -462,6 +474,7 @@ type Client struct {
 	BearerOnly                         *bool                           `json:"bearerOnly,omitempty"`
 	ClientAuthenticatorType            *string                         `json:"clientAuthenticatorType,omitempty"`
 	ClientID                           *string                         `json:"clientId,omitempty"`
+	ClientTemplate                     *string                         `json:"clientTemplate,omitempty"`
 	ConsentRequired                    *bool                           `json:"consentRequired,omitempty"`
 	DefaultClientScopes                *[]string                       `json:"defaultClientScopes,omitempty"`
 	DefaultRoles                       *[]string                       `json:"defaultRoles,omitempty"`
@@ -488,6 +501,9 @@ type Client struct {
 	ServiceAccountsEnabled             *bool                           `json:"serviceAccountsEnabled,omitempty"`
 	StandardFlowEnabled                *bool                           `json:"standardFlowEnabled,omitempty"`
 	SurrogateAuthRequired              *bool                           `json:"surrogateAuthRequired,omitempty"`
+	UseTemplateConfig                  *bool                           `json:"useTemplateConfig,omitempty"`
+	UseTemplateMappers                 *bool                           `json:"useTemplateMappers,omitempty"`
+	UseTemplateScope                   *bool                           `json:"useTemplateScope,omitempty"`
 	WebOrigins                         *[]string                       `json:"webOrigins,omitempty"`
 }
 
@@ -964,18 +980,20 @@ func (t *TokenOptions) FormData() map[string]string {
 
 // RequestingPartyTokenOptions represents the options to obtain a requesting party token
 type RequestingPartyTokenOptions struct {
-	GrantType                   *string   `json:"grant_type,omitempty"`
-	Ticket                      *string   `json:"ticket,omitempty"`
-	ClaimToken                  *string   `json:"claim_token,omitempty"`
-	ClaimTokenFormat            *string   `json:"claim_token_format,omitempty"`
-	RPT                         *string   `json:"rpt,omitempty"`
-	Permissions                 *[]string `json:"-"`
-	Audience                    *string   `json:"audience,omitempty"`
-	ResponseIncludeResourceName *bool     `json:"response_include_resource_name,string,omitempty"`
-	ResponsePermissionsLimit    *uint32   `json:"response_permissions_limit,omitempty"`
-	SubmitRequest               *bool     `json:"submit_request,string,omitempty"`
-	ResponseMode                *string   `json:"response_mode,omitempty"`
-	SubjectToken                *string   `json:"subject_token,omitempty"`
+	GrantType                     *string   `json:"grant_type,omitempty"`
+	Ticket                        *string   `json:"ticket,omitempty"`
+	ClaimToken                    *string   `json:"claim_token,omitempty"`
+	ClaimTokenFormat              *string   `json:"claim_token_format,omitempty"`
+	RPT                           *string   `json:"rpt,omitempty"`
+	Permissions                   *[]string `json:"-"`
+	PermissionResourceFormat      *string   `json:"permission_resource_format,omitempty"`
+	PermissionResourceMatchingURI *bool     `json:"permission_resource_matching_uri,string,omitempty"`
+	Audience                      *string   `json:"audience,omitempty"`
+	ResponseIncludeResourceName   *bool     `json:"response_include_resource_name,string,omitempty"`
+	ResponsePermissionsLimit      *uint32   `json:"response_permissions_limit,omitempty"`
+	SubmitRequest                 *bool     `json:"submit_request,string,omitempty"`
+	ResponseMode                  *string   `json:"response_mode,omitempty"`
+	SubjectToken                  *string   `json:"subject_token,omitempty"`
 }
 
 // FormData returns a map of options to be used in SetFormData function
@@ -1258,7 +1276,7 @@ type PermissionTicketRepresentation struct {
 	AZP         *string                                     `json:"azp,omitempty"`
 	Claims      *map[string][]string                        `json:"claims,omitempty"`
 	Permissions *[]PermissionTicketPermissionRepresentation `json:"permissions,omitempty"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 // PermissionTicketPermissionRepresentation represents the individual permissions in a permission ticket
@@ -1408,6 +1426,25 @@ type RequiredActionProviderRepresentation struct {
 	ProviderID    *string            `json:"providerId,omitempty"`
 }
 
+type UnregisteredRequiredActionProviderRepresentation struct {
+	Name       *string `json:"name,omitempty"`
+	ProviderID *string `json:"providerId,omitempty"`
+}
+
+// ManagementPermissionRepresentation is a representation of management permissions
+// v18: https://www.keycloak.org/docs-api/18.0/rest-api/#_managementpermissionreference
+type ManagementPermissionRepresentation struct {
+	Enabled          *bool              `json:"enabled,omitempty"`
+	Resource         *string            `json:"resource,omitempty"`
+	ScopePermissions *map[string]string `json:"scopePermissions,omitempty"`
+}
+
+// GetClientUserSessionsParams represents the optional parameters for getting user sessions associated with the client
+type GetClientUserSessionsParams struct {
+	First *int `json:"first,string,omitempty"`
+	Max   *int `json:"max,string,omitempty"`
+}
+
 // prettyStringStruct returns struct formatted into pretty string
 func prettyStringStruct(t interface{}) string {
 	json, err := json.MarshalIndent(t, "", "\t")
@@ -1501,3 +1538,4 @@ func (v *GetResourcePoliciesParams) String() string                 { return pre
 func (v *CredentialRepresentation) String() string                  { return prettyStringStruct(v) }
 func (v *RequiredActionProviderRepresentation) String() string      { return prettyStringStruct(v) }
 func (v *BruteForceStatus) String() string                          { return prettyStringStruct(v) }
+func (v *GetClientUserSessionsParams) String() string               { return prettyStringStruct(v) }

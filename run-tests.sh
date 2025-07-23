@@ -1,9 +1,19 @@
 #!/bin/sh
 
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 
-sleep 10
+keycloakServer=http://localhost
+url="${keycloakServer}:9000/health"
+echo "Checking service availability at $url (CTRL+C to exit)"
+while true; do
+    response=$(curl -s -o /dev/null -w "%{http_code}" $url)
+    if [ $response -eq 200 ]; then
+        break
+    fi
+    sleep 1
+done
+echo "Service is now available at ${keycloakServer}:8080"
 
 ARGS=()
 if [ $# -gt 0 ]; then
@@ -13,4 +23,4 @@ fi
 
 go test -failfast -race -cover -coverprofile=coverage.out -covermode=atomic -p 10 -cpu 1,2 -bench . -benchmem ${ARGS[@]}
 
-docker-compose down
+docker compose down

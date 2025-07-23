@@ -12,7 +12,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 )
 
@@ -109,7 +109,7 @@ func decodeRSAPublicKey(e, n *string) (*rsa.PublicKey, error) {
 		return nil, errors.Wrap(err, errMessage)
 	}
 
-	pKey := rsa.PublicKey{N: nInt, E: int(eInt)}
+	pKey := rsa.PublicKey{N: nInt, E: int(eInt)} //nolint
 	return &pKey, nil
 }
 

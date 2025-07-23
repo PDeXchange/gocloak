@@ -335,9 +335,10 @@ func TestStringerOmitEmpty(t *testing.T) {
 		&gocloak.GetClientsParams{},
 		&gocloak.RequestingPartyTokenOptions{},
 		&gocloak.RequestingPartyPermission{},
+		&gocloak.GetClientUserSessionsParams{},
 	}
 
 	for _, custom := range customs {
-		assert.Equal(t, "{}", custom.(Stringable).String())
+		assert.Equal(t, "{}", custom.String())
 	}
 }
